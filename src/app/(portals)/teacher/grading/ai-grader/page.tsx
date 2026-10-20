@@ -89,7 +89,9 @@ export default async function AIGraderPage({
     // Keep only the text lines: older rows also hold a base64 page image per page, and passing
     // those through made each 5s in-flight refresh several MB of Vercel Fast Origin Transfer.
     ocrPages: (s.ocrPages as unknown as OcrPage[] | null)?.map(p => ({ lines: p.lines })) ?? null,
-    teacherOverrideQuestionScores: s.teacherOverrideQuestionScores as unknown as Record<number, number> | null
+    teacherOverrideQuestionScores: s.teacherOverrideQuestionScores as unknown as Record<number, number> | null,
+    // Keep the private Blob URL server-side; the browser uses an authenticated file route.
+    fileUrl: `/api/teacher/grading/ai-grader/${encodeURIComponent(s.id)}/file`
   }));
 
   return (
@@ -105,3 +107,4 @@ export default async function AIGraderPage({
     </div>
   );
 }
+

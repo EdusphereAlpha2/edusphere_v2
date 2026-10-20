@@ -76,7 +76,13 @@ export default function SubmissionReport({ submission }: { submission: Submissio
 
       {tab === 'overview' && <OverviewTab submission={submission} canPublish={canPublish} gradeScaleLabel={gradeScaleLabel} />}
       {tab === 'annotated' && <AnnotatedTab submission={submission} />}
-      {tab === 'pdf' && <OriginalFileTab fileUrl={submission.fileUrl} studentName={submission.studentName} />}
+      {tab === 'pdf' && (
+        <OriginalFileTab
+          fileUrl={submission.fileUrl}
+          fileName={submission.originalFileName ?? ''}
+          studentName={submission.studentName}
+        />
+      )}
       {tab === 'ocr' && (
         <pre className="text-xs bg-slate-50 dark:bg-black border border-slate-200 dark:border-zinc-800 rounded-xl p-4 whitespace-pre-wrap max-h-[60vh] overflow-y-auto">
           {submission.ocrText}
@@ -92,8 +98,8 @@ const WORD_EXTENSIONS = ['.docx', '.doc'];
 /** Renders the originally-uploaded file appropriately for its format - an <img> for a photo, a
  *  download link for a Word doc (browsers cannot render .docx inline), and an <iframe> for
  *  everything else (PDF renders natively; plain text renders as-is). */
-function OriginalFileTab({ fileUrl, studentName }: { fileUrl: string; studentName: string }) {
-  const ext = fileUrl.toLowerCase().split('?')[0].slice(fileUrl.toLowerCase().lastIndexOf('.'));
+function OriginalFileTab({ fileUrl, fileName, studentName }: { fileUrl: string; fileName: string; studentName: string }) {
+  const ext = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
 
   if (IMAGE_EXTENSIONS.includes(ext)) {
     return (
@@ -380,3 +386,4 @@ function AnnotatedTab({ submission }: { submission: SubmissionRow }) {
     </div>
   );
 }
+

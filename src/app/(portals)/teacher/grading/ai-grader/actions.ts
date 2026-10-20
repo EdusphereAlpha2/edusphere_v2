@@ -7,7 +7,7 @@ import { guard, TEACHER_ROLES } from '@/lib/authz';
 import type { ActionState } from '@/components/ui/form';
 import { extractAnswerText, isAcceptedAnswerSheet, isLegacyDoc, guessMimeType } from '@/lib/grading/extractText';
 import { gradeAnswerSheet, buildMarkedOcrText } from '@/lib/grading/grade';
-import { uploadAnswerSheet } from '@/lib/grading/storage';
+import { readAnswerSheet, uploadAnswerSheet } from '@/lib/grading/storage';
 import { upsertMarkingScheme, findMarkingScheme } from '@/lib/grading/markingScheme';
 import { combineImagesToPdf } from '@/lib/grading/combineImages';
 import type { CourseworkType, IBProgramme } from '@/lib/grading/types';
@@ -146,6 +146,7 @@ export async function uploadAndGrade(_prev: ActionState, formData: FormData): Pr
   const submission = await prisma.aIGradingSubmission.create({
     data: {
       studentId: student.id,
+      originalFileName: combinedFileName,
       classroomId,
       teacherId: c.teacher.id,
       subjectName,
@@ -240,19 +241,16 @@ export async function retryGrading(submissionId: string): Promise<ActionState> {
     return { error: 'That submission is not in one of your classes.' };
   }
 
-  let resp: Response;
+  let storedFile: Awaited<ReturnType<typeof readAnswerSheet>>;
   try {
-    resp = await fetch(submission.fileUrl);
+    storedFile = await readAnswerSheet(submission.fileUrl);
   } catch (err) {
     return { error: `Could not re-fetch the stored file: ${(err as Error).message}` };
   }
-  if (!resp.ok) return { error: `Could not re-fetch the stored file (status ${resp.status}).` };
-  const buffer = Buffer.from(await resp.arrayBuffer());
+  const buffer = Buffer.from(await new Response(storedFile.stream).arrayBuffer());
 
-  // The stored blob URL carries the original filename (see uploadAnswerSheet) but not the
-  // browser-reported MIME type, since only the URL is persisted - guessMimeType covers that.
-  const fileName = decodeURIComponent(submission.fileUrl.split('/').pop() ?? '');
-  const mimeType = resp.headers.get('content-type') || guessMimeType(fileName);
+  const fileName = submission.originalFileName || storedFile.fileName;
+  const mimeType = storedFile.contentType || guessMimeType(fileName);
 
   const markingSchemeText = await findMarkingScheme({
     classroomId: submission.classroomId,
@@ -428,3 +426,4 @@ export async function publishResult(_prev: ActionState, formData: FormData): Pro
     success: `Published — grade ${grade}/7 saved` + (rows.length ? ` and ${rows.length} notification${rows.length === 1 ? '' : 's'} sent.` : '.'),
   };
 }
+

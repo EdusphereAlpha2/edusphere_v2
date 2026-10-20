@@ -1,4 +1,5 @@
 import mammoth from 'mammoth';
+import { runChandraOcr } from './chandra';
 import { runOcr, type OcrResult } from './ocr';
 
 /** Answer sheets teachers actually have on hand aren't always a scanned PDF - some are typed up
@@ -92,6 +93,12 @@ export async function extractAnswerText(fileBuffer: Buffer, fileName: string, mi
     return fromDigitalText(value);
   }
 
+  // Use Chandra when configured; retain PaddleOCR for deployments without a Datalab key.
+  if (process.env.DATALAB_API_KEY) {
+    return runChandraOcr(fileBuffer, fileName, mimeType || 'application/octet-stream');
+  }
+
   // PDF and images both go through PaddleOCR - it accepts either through the same endpoint.
   return runOcr(fileBuffer, fileName, mimeType || 'application/octet-stream');
 }
+
